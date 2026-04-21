@@ -2,22 +2,22 @@ const express = require("express");
 
 const app = express();
 
-// 🔥 FORCE homepage response (no files needed)
+// 🔥 ROOT ROUTE (this MUST respond)
 app.get("/", (req, res) => {
-  res.send(`
-    <h1>Eve is Live 🔥</h1>
-    <p>Your server is working.</p>
-  `);
+  res.send("Eve is Live 🔥");
 });
 
-// Basic chat route
+// REQUIRED for JSON
 app.use(express.json());
-app.post("/chat", (req, res) => {
-  const msg = req.body.message || "";
-  res.json({ reply: "Eve: " + msg });
+
+// TEST ROUTE
+app.get("/test", (req, res) => {
+  res.send("Test route works");
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Eve running");
+// IMPORTANT: bind to Render port
+const PORT = process.env.PORT;
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log("Server running on port " + PORT);
 });
