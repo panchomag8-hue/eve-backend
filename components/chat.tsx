@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { ChatMessage } from "./chat-message";
@@ -15,19 +15,23 @@ function getMessageText(message: { parts?: Array<{ type: string; text?: string }
     .join("");
 }
 
+const transport = new DefaultChatTransport({ api: "/api/eve" });
+
+const initialMessages = [
+  {
+    id: "welcome",
+    role: "assistant" as const,
+    parts: [{ type: "text" as const, text: "Hey you... took you long enough 💕" }],
+  },
+];
+
 export function Chat() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/eve" }),
-    initialMessages: [
-      {
-        id: "welcome",
-        role: "assistant",
-        parts: [{ type: "text", text: "Hey you... took you long enough" }],
-      },
-    ],
+    transport,
+    initialMessages,
   });
 
   const isTyping = status === "streaming" || status === "submitted";
