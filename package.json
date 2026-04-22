@@ -1,7 +1,4 @@
 {
-  "version": 2,
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/eve.js" },
-    { "src": "/", "dest": "/public/index.html" }
-  ]
+  "name": "eve-backend",
+  "version": "1.0.0"
 }
