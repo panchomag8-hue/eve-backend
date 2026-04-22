@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "./chat-message";
 import { ChatInput } from "./chat-input";
-import { TypingIndicator } from "./typing-indicator";
+
 
 interface Message {
   id: string;
@@ -81,13 +81,13 @@ export function Chat() {
               mood={message.mood}
             />
           ))}
-          {isTyping && <TypingIndicator />}
+          
           <div ref={messagesEndRef} />
         </div>
       </div>
       <div className="border-t border-border bg-background/80 backdrop-blur-sm p-4">
         <div className="max-w-2xl mx-auto">
-          <ChatInput onSend={sendMessage} disabled={isTyping} />
+          <ChatInput onSend={sendMessage} />
         </div>
       </div>
     </div>
