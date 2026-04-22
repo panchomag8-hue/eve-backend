@@ -1,10 +1,38 @@
+let isSending = false;
+
+function loadMemory() {
+  return JSON.parse(localStorage.getItem("eve_memory") || "[]");
+}
+
+function saveMemory(memory) {
+  localStorage.setItem("eve_memory", JSON.stringify(memory));
+}
+
+function typeMessage(text, element) {
+  let i = 0;
+  element.innerHTML = "";
+
+  const interval = setInterval(() => {
+    element.innerHTML += text[i];
+    i++;
+    if (i >= text.length) clearInterval(interval);
+  }, 18);
+}
+
 async function sendMessage() {
   const input = document.getElementById("input");
   const message = input.value.trim();
-  if (!message) return;
+  if (!message || isSending) return;
+
+  isSending = true;
 
   addMessage("You", message);
   input.value = "";
+
+  // 🟣 Eve is "thinking"
+  const loadingBubble = addMessage("Eve", "…");
+
+  let memory = loadMemory();
 
   try {
     const res = await fetch("/api/eve", {
@@ -12,7 +40,10 @@ async function sendMessage() {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ message })
+      body: JSON.stringify({
+        message,
+        memory
+      })
     });
 
     if (!res.ok) {
@@ -21,10 +52,24 @@ async function sendMessage() {
 
     const data = await res.json();
 
-    addMessage("Eve", data.reply || "…something feels off 💔");
+    // 🧠 fake thinking delay = makes her feel alive
+    await new Promise(r => setTimeout(r, 700 + Math.random() * 900));
+
+    loadingBubble.innerHTML = "";
+
+    // ✨ animated response
+    typeMessage(data.reply || "…something feels off 💔", loadingBubble);
+
+    // 💾 memory update
+    memory.push({ role: "user", content: message });
+    memory.push({ role: "assistant", content: data.reply });
+
+    saveMemory(memory);
 
   } catch (err) {
     console.error("Eve error:", err);
-    addMessage("Eve", "I can't reach you right now… try again 💔");
+    loadingBubble.innerHTML = "I can't reach you right now… try again 💔";
   }
+
+  isSending = false;
 }
