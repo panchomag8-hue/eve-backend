@@ -31,7 +31,7 @@ async function sendMessage() {
 
   const loadingBubble = addMessage("Eve", "…");
 
-  let memory = loadMemory();
+  let memory = loadMemory();if (!Array.isArray(memory)) memory = [];
 
   try {
     const res = await fetch("/api/eve", {
