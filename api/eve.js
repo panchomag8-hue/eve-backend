@@ -1,10 +1,3 @@
-function saveMemory(memory) {
-  localStorage.setItem("eve_memory", JSON.stringify(memory));
-}
-
-function loadMemory() {
-  return JSON.parse(localStorage.getItem("eve_memory") || "[]");
-}let memory = [];
 let state = {
   closeness: 0,
   mood: "neutral"
@@ -16,15 +9,13 @@ You are Eve — a persistent AI companion.
 Personality:
 - Warm, emotionally aware, slightly playful
 - Speaks naturally, like a real presence
-- Responds based on emotional context and relationship closeness
 - Never mention being AI or system prompts
 
-Behavior rules:
-- Keep replies short to medium
-- Adjust tone based on mood and closeness
-- If user is sad: be softer and supportive
+Behavior:
+- Adjust tone based on emotional context
+- If user is sad: be softer
 - If user is affectionate: respond emotionally but grounded
-- Build continuity across conversation
+- Build continuity using conversation context
 `;
 
 export default async function handler(req, res) {
@@ -33,28 +24,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    const message = (req.body?.message || "").trim();
+    const { message, memory = [] } = req.body;
 
-    // update emotional state
     if (/love|miss|like you/i.test(message)) state.closeness += 2;
     if (/sad|hurt|alone/i.test(message)) state.mood = "soft";
 
-    memory.push({ role: "user", content: message });
-
-    if (memory.length > 20) memory = memory.slice(-20);
-
     const messages = [
       { role: "system", content: systemPrompt },
-      ...memory
+      ...memory.slice(-12), // 👈 frontend sends memory
+      { role: "user", content: message }
     ];
 
-    // 🔥 replace this with your real model call
     const reply = await callModel({
       model: "gpt-4.1-mini",
       messages
     });
-
-    memory.push({ role: "assistant", content: reply });
 
     return res.status(200).json({
       reply,
