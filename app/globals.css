@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0c;
+  --color-foreground: #f5f5f7;
+  --color-muted: #27272a;
+  --color-muted-foreground: #71717a;
+  --color-primary: #ec4899;
+  --color-primary-foreground: #fdf4ff;
+  --color-secondary: #18181b;
+  --color-secondary-foreground: #f5f5f7;
+  --color-accent: #f472b6;
+  --color-border: #27272a;
+  --color-ring: #ec4899;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --radius: 1rem;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-muted);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Pulse animation for typing indicator */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 1.5s ease-in-out infinite;
+}
+
+/* Glow effect */
+.glow {
+  box-shadow: 0 0 20px rgba(236, 72, 153, 0.3),
+              0 0 40px rgba(236, 72, 153, 0.1);
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(236, 72, 153, 0.5);
+}

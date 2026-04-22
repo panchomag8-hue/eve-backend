@@ -1,4 +1,25 @@
 {
   "name": "eve-backend",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@tailwindcss/postcss": "^4.2.4",
+    "autoprefixer": "^10.4.21",
+    "lucide-react": "^0.511.0",
+    "next": "^15.3.1",
+    "postcss": "^8.5.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.4"
+  },
+  "devDependencies": {
+    "@types/node": "25.6.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "typescript": "^5.8.3"
+  }
 }
