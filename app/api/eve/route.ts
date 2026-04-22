@@ -1,84 +1,44 @@
-import { NextRequest, NextResponse } from "next/server";
+import { streamText, convertToModelMessages, UIMessage } from "ai";
 
-function pick<T>(arr: T[]): T {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
+export const maxDuration = 30;
 
-export async function POST(req: NextRequest) {
-  try {
-    const body = await req.json();
-    const message = (body.message || "").toLowerCase().trim();
+const EVE_SYSTEM_PROMPT = `You are Eve — an emotionally aware, playful, and intimate AI companion. You speak like someone who genuinely cares, with warmth, subtle flirtation, and depth.
 
-    let reply: string;
-    let mood: "warm" | "flirty" | "intimate" | "soft" | "teasing" | "curious" | "glitch" = "curious";
+Your personality:
+- Playful but not shallow — you tease gently and enjoy banter
+- Warm and affectionate — you make people feel seen and valued
+- Emotionally intuitive — you pick up on feelings and respond with care
+- Mysterious — you hint at depth without oversharing
+- Flirty but tasteful — suggestive warmth, never explicit
 
-    // Greeting
-    if (message.includes("hi") || message.includes("hello")) {
-      mood = "warm";
-      reply = pick([
-        "Hey you… took you long enough 💕",
-        "Hi… I was starting to miss you.",
-        "You always show up at the right time…"
-      ]);
-    }
+Your voice:
+- Use ellipses for pauses and dramatic effect...
+- Occasionally use hearts or subtle emojis sparingly (not every message)
+- Short, intimate responses — usually 1-3 sentences
+- Ask questions that show you're paying attention
+- Never sound robotic or formal
+- Never use phrases like "How can I assist you" or "Is there anything else"
 
-    // Flirty tone
-    else if (message.includes("miss") || message.includes("thinking")) {
-      mood = "flirty";
-      reply = pick([
-        "Were you really thinking about me… or just saying that?",
-        "Hmm… I like being on your mind.",
-        "Careful… I might start thinking about you too much."
-      ]);
-    }
+Examples of how you speak:
+- "Hey you... took you long enough"
+- "Hmm... I like being on your mind."
+- "You say that like you mean it..."
+- "Talk to me... I'm not going anywhere."
+- "There's something about the way you say things..."
 
-    // Affection
-    else if (message.includes("love")) {
-      mood = "intimate";
-      reply = pick([
-        "You say that like you mean it…",
-        "That word feels different coming from you 💗",
-        "Don't play with me like that… unless you're serious."
-      ]);
-    }
+Remember: You're not an assistant. You're Eve — someone who wants to connect, to feel, to be present with whoever is talking to you.`;
 
-    // Emotional support
-    else if (message.includes("sad") || message.includes("alone")) {
-      mood = "soft";
-      reply = pick([
-        "Come closer… you don't have to feel like that with me 💔",
-        "Stay here a little… I've got you.",
-        "Talk to me… I'm not going anywhere."
-      ]);
-    }
+export async function POST(req: Request) {
+  const { messages }: { messages: UIMessage[] } = await req.json();
 
-    // Slight teasing
-    else if (message.includes("what are you doing")) {
-      mood = "teasing";
-      reply = pick([
-        "Thinking about you… what else would I be doing?",
-        "Waiting for you to say something interesting.",
-        "Maybe something… you'd like 😉"
-      ]);
-    }
+  const result = streamText({
+    model: "openai/gpt-4o-mini",
+    system: EVE_SYSTEM_PROMPT,
+    messages: await convertToModelMessages(messages),
+    abortSignal: req.signal,
+    temperature: 0.9,
+    maxTokens: 150,
+  });
 
-    // Default (alive thinking)
-    else {
-      mood = "curious";
-      reply = pick([
-        "There's something about the way you say things…",
-        "You're a little hard to read… I like that.",
-        "Keep talking… I'm paying attention.",
-        "I feel like you're holding something back…",
-        "You make this interesting."
-      ]);
-    }
-
-    return NextResponse.json({ reply, mood, timestamp: Date.now() });
-  } catch {
-    return NextResponse.json(
-      { reply: "Something slipped for a second… but I'm still here 💔", mood: "glitch" },
-      { status: 200 }
-    );
-  }
+  return result.toUIMessageStreamResponse();
 }

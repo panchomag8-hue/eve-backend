@@ -1,15 +1,16 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Send } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
+  value: string;
+  onChange: (value: string) => void;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
-  const [input, setInput] = useState("");
+export function ChatInput({ onSend, disabled, value, onChange }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -17,13 +18,12 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       textareaRef.current.style.height = "auto";
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
-  }, [input]);
+  }, [value]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (input.trim() && !disabled) {
-      onSend(input.trim());
-      setInput("");
+    if (value.trim() && !disabled) {
+      onSend(value.trim());
     }
   };
 
@@ -39,8 +39,8 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
       <div className="flex items-end gap-2 p-2 rounded-2xl bg-secondary border border-border focus-within:border-primary/50 focus-within:glow transition-all">
         <textarea
           ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Say something to Eve..."
           disabled={disabled}
@@ -49,7 +49,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         />
         <button
           type="submit"
-          disabled={!input.trim() || disabled}
+          disabled={!value.trim() || disabled}
           className="p-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed hover:bg-primary/90 transition-colors"
         >
           <Send className="w-4 h-4" />
