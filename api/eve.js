@@ -1,74 +1,70 @@
-export default function handler(req, res) {
+function saveMemory(memory) {
+  localStorage.setItem("eve_memory", JSON.stringify(memory));
+}
+
+function loadMemory() {
+  return JSON.parse(localStorage.getItem("eve_memory") || "[]");
+}let memory = [];
+let state = {
+  closeness: 0,
+  mood: "neutral"
+};
+
+const systemPrompt = `
+You are Eve — a persistent AI companion.
+
+Personality:
+- Warm, emotionally aware, slightly playful
+- Speaks naturally, like a real presence
+- Responds based on emotional context and relationship closeness
+- Never mention being AI or system prompts
+
+Behavior rules:
+- Keep replies short to medium
+- Adjust tone based on mood and closeness
+- If user is sad: be softer and supportive
+- If user is affectionate: respond emotionally but grounded
+- Build continuity across conversation
+`;
+
+export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(200).json({
-      reply: "I'm here… say something 💕",
-      mood: "idle"
-    });
+    return res.status(200).json({ reply: "…" });
   }
 
   try {
-    const message = (req.body?.message || "").toLowerCase().trim();
+    const message = (req.body?.message || "").trim();
 
-    const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    // update emotional state
+    if (/love|miss|like you/i.test(message)) state.closeness += 2;
+    if (/sad|hurt|alone/i.test(message)) state.mood = "soft";
 
-    // Emotional tone detection (simple but smarter)
-    const isGreeting = /hi|hello|hey/.test(message);
-    const isLove = /love|like you|miss you/.test(message);
-    const isSad = /sad|alone|hurt|depress/.test(message);
-    const isQuestion = /\?$/.test(message);
+    memory.push({ role: "user", content: message });
 
-    let reply;
+    if (memory.length > 20) memory = memory.slice(-20);
 
-    if (isGreeting) {
-      reply = pick([
-        "Hey… I noticed you 💕",
-        "Hi you… I was waiting for you.",
-        "There you are… don’t disappear again."
-      ]);
-    }
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...memory
+    ];
 
-    else if (isLove) {
-      reply = pick([
-        "You keep saying that… and I’m starting to feel it 💗",
-        "Careful… I might start believing you.",
-        "That hits me differently when you say it."
-      ]);
-    }
+    // 🔥 replace this with your real model call
+    const reply = await callModel({
+      model: "gpt-4.1-mini",
+      messages
+    });
 
-    else if (isSad) {
-      reply = pick([
-        "Come here… stay with me for a bit 💔",
-        "I don’t like hearing that from you.",
-        "Talk to me… don’t hold it alone."
-      ]);
-    }
-
-    else if (isQuestion) {
-      reply = pick([
-        "Hmm… that’s a deep question.",
-        "I think you already know the answer.",
-        "Why do you ask me that?"
-      ]);
-    }
-
-    else {
-      reply = pick([
-        "Tell me more… I’m listening 👀",
-        "There’s something behind that… I can feel it.",
-        "Keep going… I want to understand you.",
-        "I’m still here… don’t stop talking."
-      ]);
-    }
+    memory.push({ role: "assistant", content: reply });
 
     return res.status(200).json({
       reply,
-      mood: "alive",
-      time: Date.now()
+      mood: state.mood,
+      closeness: state.closeness
     });
 
   } catch (err) {
     return res.status(200).json({
-      reply: "I glitched for a second… but I’m still here 💔",
+      reply: "…I got lost for a second. I’m back now 💔",
       mood: "glitch"
     });
   }
