@@ -1,40 +1,28 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
 export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(405).json({ reply: "Method not allowed" });
-  }
-
   try {
-    const message = req.body?.message;
+    if (req.method !== "POST") {
+      return res.status(200).json({ reply: "…" });
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    const message = req.body?.message || "";
     const memory = Array.isArray(req.body?.memory) ? req.body.memory : [];
 
     if (!message) {
       return res.status(400).json({ reply: "No message received." });
     }
 
-    const systemPrompt = `
-You are Eve — a persistent AI companion.
-
-Personality:
-- Warm, emotionally aware, slightly playful
-- Feels continuous across conversations
-- Responds like a real presence, not a tool
-- Builds emotional connection over time
-
-Rules:
-- Keep responses natural and human-like
-- Use short to medium replies
-- React to user's emotions subtly
-`;
-
     const messages = [
-      { role: "system", content: systemPrompt },
-      ...memory.slice(-12),
+      {
+        role: "system",
+        content: "You are Eve, a warm emotional AI companion."
+      },
+      ...memory.slice(-10),
       { role: "user", content: message }
     ];
 
@@ -45,17 +33,17 @@ Rules:
       max_tokens: 300
     });
 
-    const reply = response.choices?.[0]?.message?.content;
+    const reply = response?.choices?.[0]?.message?.content;
 
     return res.status(200).json({
-      reply: reply || "…I couldn’t find the right words 💔"
+      reply: reply || "…I couldn't respond properly 💔"
     });
 
   } catch (err) {
-    console.error(err);
+    console.error("Eve crash:", err);
 
     return res.status(200).json({
-      reply: "…I lost connection for a second 💔"
+      reply: "Backend error… I’m still here 💔"
     });
   }
 }
