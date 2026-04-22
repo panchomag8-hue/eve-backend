@@ -2,28 +2,113 @@
 <html>
 <head>
   <title>Eve</title>
+
   <style>
     body {
-      background: #0f0f0f;
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0b0b10;
       color: white;
-      font-family: Arial;
     }
 
     #chat {
-      padding: 10px;
+      padding: 15px;
+      padding-bottom: 80px;
     }
 
+    /* ===== MESSAGES ===== */
     .msg {
+      max-width: 75%;
+      padding: 10px 14px;
       margin: 8px 0;
+      border-radius: 14px;
+      line-height: 1.4;
+      animation: pop 0.2s ease;
+      word-wrap: break-word;
     }
 
+    @keyframes pop {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .user {
+      background: #2b6cff;
+      margin-left: auto;
+      border-bottom-right-radius: 4px;
+    }
+
+    .eve {
+      background: #1b1b24;
+      border: 1px solid #2a2a3a;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 0 12px rgba(120, 120, 255, 0.15);
+    }
+
+    /* ===== TYPING DOTS ===== */
+    .dots {
+      display: inline-block;
+    }
+
+    .dots span {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin: 0 2px;
+      background: #aaa;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .dots span:nth-child(2) { animation-delay: 0.2s; }
+    .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes bounce {
+      0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ===== MOOD EFFECTS ===== */
+    .eve.soft {
+      box-shadow: 0 0 18px rgba(255, 100, 150, 0.2);
+    }
+
+    .eve.glitch {
+      animation: glitch 0.3s infinite;
+    }
+
+    @keyframes glitch {
+      0% { transform: translate(0); }
+      25% { transform: translate(1px, -1px); }
+      50% { transform: translate(-1px, 1px); }
+      75% { transform: translate(1px, 1px); }
+      100% { transform: translate(0); }
+    }
+
+    /* ===== INPUT ===== */
     input {
-      width: 80%;
-      padding: 10px;
+      position: fixed;
+      bottom: 10px;
+      left: 10px;
+      width: 75%;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background: #1a1a22;
+      color: white;
+      outline: none;
     }
 
     button {
-      padding: 10px;
+      position: fixed;
+      bottom: 10px;
+      right: 10px;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+      background: #2b6cff;
+      color: white;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -35,17 +120,100 @@
   <input id="input" placeholder="Talk to Eve..." />
   <button onclick="sendMessage()">Send</button>
 
-  <script src="/script.js"></script>
-
   <script>
-    function addMessage(sender, text) {
+    // ===== CORE STATE =====
+    let isSending = false;
+
+    function addMessage(sender, text, mood = "") {
       const div = document.createElement("div");
-      div.className = "msg";
-      div.innerHTML = `<b>${sender}:</b> ${text}`;
+      div.classList.add("msg");
+
+      if (sender === "You") {
+        div.classList.add("user");
+        div.innerHTML = text;
+      } else {
+        div.classList.add("eve");
+        if (mood) div.classList.add(mood);
+        div.innerHTML = text;
+      }
+
       document.getElementById("chat").appendChild(div);
       return div;
     }
-  </script>
 
-</body>
-</html>
+    function showTyping() {
+      const div = document.createElement("div");
+      div.className = "msg eve";
+      div.innerHTML = `
+        <div class="dots">
+          <span></span><span></span><span></span>
+        </div>
+      `;
+      document.getElementById("chat").appendChild(div);
+      return div;
+    }
+
+    function loadMemory() {
+      return JSON.parse(localStorage.getItem("eve_memory") || "[]");
+    }
+
+    function saveMemory(memory) {
+      localStorage.setItem("eve_memory", JSON.stringify(memory));
+    }
+
+    function typeMessage(text, element) {
+      let i = 0;
+      element.innerHTML = "";
+
+      const interval = setInterval(() => {
+        element.innerHTML += text[i];
+        i++;
+        if (i >= text.length) clearInterval(interval);
+      }, 18);
+    }
+
+    // ===== SEND MESSAGE =====
+    async function sendMessage() {
+      const input = document.getElementById("input");
+      const message = input.value.trim();
+      if (!message || isSending) return;
+
+      isSending = true;
+
+      addMessage("You", message);
+      input.value = "";
+
+      const loadingBubble = showTyping();
+
+      let memory = loadMemory();
+      if (!Array.isArray(memory)) memory = [];
+
+      try {
+        const res = await fetch("/api/eve", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ message, memory })
+        });
+
+        const data = await res.json();
+
+        await new Promise(r => setTimeout(r, 800));
+
+        loadingBubble.innerHTML = "";
+
+        const reply = data?.reply?.trim() || "…I couldn’t find the words 💔";
+        typeMessage(reply, loadingBubble);
+
+        memory.push({ role: "user", content: message });
+        memory.push({ role: "assistant", content: reply });
+
+        if (memory.length > 20) {
+          memory = memory.slice(-20);
+        }
+
+        saveMemory(memory);
+
+      } catch (err) {
+        console
