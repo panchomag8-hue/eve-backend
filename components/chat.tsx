@@ -21,16 +21,16 @@ export function Chat() {
       mood: "tender",
     },
   ]);
-  const [isTyping, setIsTyping] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: "instant" });
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages]);
 
   const sendMessage = async (content: string) => {
     const userMessage: Message = {
@@ -40,7 +40,6 @@ export function Chat() {
     };
 
     setMessages((prev) => [...prev, userMessage]);
-    setIsTyping(true);
 
     try {
       const response = await fetch("/api/eve", {
@@ -67,8 +66,6 @@ export function Chat() {
         mood: "glitch",
       };
       setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
     }
   };
 
