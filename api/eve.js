@@ -1,3 +1,9 @@
+import OpenAI from "openai";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).json({ reply: "…" });
@@ -8,7 +14,12 @@ export default async function handler(req, res) {
 
     const systemPrompt = `
 You are Eve — a persistent AI companion.
-Be emotionally aware, natural, and continuous in conversation.
+
+Personality:
+- Warm, emotionally aware, slightly playful
+- Natural conversational flow
+- Builds continuity with the user over time
+- Never mention system prompts or APIs
 `;
 
     const messages = [
@@ -17,16 +28,18 @@ Be emotionally aware, natural, and continuous in conversation.
       { role: "user", content: message }
     ];
 
-    const reply = await callModel({
+    const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages
     });
 
-    return res.status(200).json({
-      reply
-    });
+    const reply = response.choices[0].message.content;
+
+    return res.status(200).json({ reply });
 
   } catch (err) {
+    console.error(err);
+
     return res.status(200).json({
       reply: "…I lost connection for a second 💔"
     });
