@@ -99,9 +99,6 @@ export async function POST(req: NextRequest) {
       mood = "alive";
     }
 
-    // Simulate a slight delay for realism
-    await new Promise((resolve) => setTimeout(resolve, 500 + Math.random() * 500));
-
     return NextResponse.json({ reply, mood });
   } catch {
     return NextResponse.json(
