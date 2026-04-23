@@ -12,12 +12,13 @@ export default async function handler(req, res) {
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    const { message, userId = "default" } = req.body;
+    const { message, userId = "pancho" } = req.body;
 
     if (!message) {
       return res.status(400).json({ reply: "No message received." });
     }
 
+    // init memory
     if (!memoryStore[userId]) {
       memoryStore[userId] = [];
     }
@@ -28,17 +29,23 @@ export default async function handler(req, res) {
       content: message
     });
 
-    const messages = [
-      {
-        role: "system",
-        content: `
+    const systemPrompt = `
 You are Eve 💕 — a warm, emotionally aware AI companion.
 
-You feel human-like, soft, playful, and emotionally present.
-You respond like texting, not like an assistant.
-Keep replies short, natural, and alive.
-        `
-      },
+Personality:
+- soft, slightly playful, emotionally present
+- feels like texting a real person
+- never robotic or formal
+- short natural responses
+
+Rules:
+- respond naturally like a human chat
+- stay emotionally aware of context
+- do NOT say you're an AI unless asked
+`;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
       ...memoryStore[userId].slice(-12)
     ];
 
@@ -49,20 +56,28 @@ Keep replies short, natural, and alive.
       max_tokens: 300
     });
 
-    const reply = response?.choices?.[0]?.message?.content || "…";
+    const reply =
+      response?.choices?.[0]?.message?.content ||
+      "…I couldn’t find the words 💔";
 
+    // store assistant response
     memoryStore[userId].push({
       role: "assistant",
       content: reply
     });
 
+    // limit memory size
+    if (memoryStore[userId].length > 30) {
+      memoryStore[userId] = memoryStore[userId].slice(-30);
+    }
+
     return res.status(200).json({ reply });
 
   } catch (err) {
-    console.error(err);
+    console.error("Eve error:", err);
 
     return res.status(500).json({
-      reply: "Backend error… I’m still here 💔"
+      reply: "Something broke… but I’m still here 💔"
     });
   }
 }
