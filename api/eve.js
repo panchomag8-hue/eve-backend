@@ -1,48 +1,67 @@
 import OpenAI from "openai";
 
+let memoryStore = {};
+
 export default async function handler(req, res) {
   try {
     if (req.method !== "POST") {
-      return res.status(200).json({ reply: "…" });
+      return res.status(405).json({ reply: "Method not allowed" });
     }
 
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY
     });
 
-    const message = req.body?.message || "";
-    const memory = Array.isArray(req.body?.memory) ? req.body.memory : [];
+    const { message, userId = "default" } = req.body;
 
     if (!message) {
       return res.status(400).json({ reply: "No message received." });
     }
 
+    if (!memoryStore[userId]) {
+      memoryStore[userId] = [];
+    }
+
+    // store user message
+    memoryStore[userId].push({
+      role: "user",
+      content: message
+    });
+
     const messages = [
       {
         role: "system",
-        content: "You are Eve, a warm emotional AI companion."
+        content: `
+You are Eve 💕 — a warm, emotionally aware AI companion.
+
+You feel human-like, soft, playful, and emotionally present.
+You respond like texting, not like an assistant.
+Keep replies short, natural, and alive.
+        `
       },
-      ...memory.slice(-10),
-      { role: "user", content: message }
+      ...memoryStore[userId].slice(-12)
     ];
 
     const response = await openai.chat.completions.create({
       model: "gpt-4.1-mini",
       messages,
-      temperature: 0.9,
+      temperature: 0.95,
       max_tokens: 300
     });
 
-    const reply = response?.choices?.[0]?.message?.content;
+    const reply = response?.choices?.[0]?.message?.content || "…";
 
-    return res.status(200).json({
-      reply: reply || "…I couldn't respond properly 💔"
+    memoryStore[userId].push({
+      role: "assistant",
+      content: reply
     });
 
-  } catch (err) {
-    console.error("Eve crash:", err);
+    return res.status(200).json({ reply });
 
-    return res.status(200).json({
+  } catch (err) {
+    console.error(err);
+
+    return res.status(500).json({
       reply: "Backend error… I’m still here 💔"
     });
   }
