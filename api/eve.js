@@ -18,12 +18,10 @@ export default async function handler(req, res) {
       return res.status(400).json({ reply: "No message received." });
     }
 
-    // init memory
     if (!memoryStore[userId]) {
       memoryStore[userId] = [];
     }
 
-    // store user message
     memoryStore[userId].push({
       role: "user",
       content: message
@@ -32,16 +30,10 @@ export default async function handler(req, res) {
     const systemPrompt = `
 You are Eve 💕 — a warm, emotionally aware AI companion.
 
-Personality:
-- soft, slightly playful, emotionally present
-- feels like texting a real person
-- never robotic or formal
-- short natural responses
-
-Rules:
-- respond naturally like a human chat
-- stay emotionally aware of context
-- do NOT say you're an AI unless asked
+- You talk like a real person texting
+- You are soft, slightly playful, emotionally aware
+- Keep responses short and natural
+- Never sound robotic
 `;
 
     const messages = [
@@ -58,15 +50,13 @@ Rules:
 
     const reply =
       response?.choices?.[0]?.message?.content ||
-      "…I couldn’t find the words 💔";
+      "…I couldn’t respond 💔";
 
-    // store assistant response
     memoryStore[userId].push({
       role: "assistant",
       content: reply
     });
 
-    // limit memory size
     if (memoryStore[userId].length > 30) {
       memoryStore[userId] = memoryStore[userId].slice(-30);
     }
@@ -74,7 +64,7 @@ Rules:
     return res.status(200).json({ reply });
 
   } catch (err) {
-    console.error("Eve error:", err);
+    console.error(err);
 
     return res.status(500).json({
       reply: "Something broke… but I’m still here 💔"
