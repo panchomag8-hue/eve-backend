@@ -1,100 +1,71 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Eve</title>
+let isSending = false;
 
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0b0b10;
-      color: white;
-    }
+function addMessage(sender, text) {
+  const div = document.createElement("div");
+  div.classList.add("msg");
 
-    #chat {
-      padding: 15px;
-      padding-bottom: 80px;
-    }
+  if (sender === "You") {
+    div.classList.add("user");
+  } else {
+    div.classList.add("eve");
+  }
 
-    .msg {
-      max-width: 75%;
-      padding: 10px 14px;
-      margin: 8px 0;
-      border-radius: 14px;
-      line-height: 1.4;
-      word-wrap: break-word;
-    }
+  div.innerHTML = text;
+  document.getElementById("chat").appendChild(div);
+  return div;
+}
 
-    .user {
-      background: #2b6cff;
-      margin-left: auto;
-    }
+function typeMessage(text, element) {
+  let i = 0;
+  element.innerHTML = "";
 
-    .eve {
-      background: #1b1b24;
-      border: 1px solid #2a2a3a;
-    }
+  const interval = setInterval(() => {
+    element.innerHTML += text[i];
+    i++;
+    if (i >= text.length) clearInterval(interval);
+  }, 18);
+}
 
-    input {
-      position: fixed;
-      bottom: 10px;
-      left: 10px;
-      width: 75%;
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      background: #1a1a22;
-      color: white;
-      outline: none;
-    }
+async function sendMessage() {
+  const input = document.getElementById("input");
+  const message = input.value.trim();
 
-    button {
-      position: fixed;
-      bottom: 10px;
-      right: 10px;
-      padding: 12px;
-      border-radius: 10px;
-      border: none;
-      background: #2b6cff;
-      color: white;
-      cursor: pointer;
-    }
-  </style>
-</head>
+  if (!message || isSending) return;
 
-<body>
+  isSending = true;
 
-  <div id="chat"></div>
+  addMessage("You", message);
+  input.value = "";
 
-  <input id="input" placeholder="Talk to Eve..." />
-  <button onclick="sendMessage()">Send</button>
+  const loadingBubble = addMessage("Eve", "…");
 
-  <script>
-    // =========================
-    // CORE STATE
-    // =========================
-    let isSending = false;
+  try {
+    const res = await fetch("/api/eve", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message,
+        userId: "pancho"
+      })
+    });
 
-    // =========================
-    // UI HELPERS
-    // =========================
-    function addMessage(sender, text) {
-      const div = document.createElement("div");
-      div.classList.add("msg");
+    const data = await res.json();
 
-      if (sender === "You") {
-        div.classList.add("user");
-      } else {
-        div.classList.add("eve");
-      }
+    await new Promise(r => setTimeout(r, 700));
 
-      div.innerHTML = text;
-      document.getElementById("chat").appendChild(div);
-      return div;
-    }
+    loadingBubble.innerHTML = "";
+    typeMessage(data?.reply || "…I couldn’t respond 💔", loadingBubble);
 
-    function typeMessage(text, element) {
-      let i = 0;
-      element.innerHTML = "";
+  } catch (err) {
+    loadingBubble.innerHTML = "I can't reach you right now… 💔";
+  }
 
-      const
+  isSending = false;
+}
+
+// Enter key support
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
