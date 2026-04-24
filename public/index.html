@@ -4,11 +4,7 @@ function addMessage(sender, text) {
   const div = document.createElement("div");
   div.classList.add("msg");
 
-  if (sender === "You") {
-    div.classList.add("user");
-  } else {
-    div.classList.add("eve");
-  }
+  div.classList.add(sender === "You" ? "user" : "eve");
 
   div.innerHTML = text;
   document.getElementById("chat").appendChild(div);
@@ -21,9 +17,8 @@ function addMessage(sender, text) {
 
 function typeMessage(text, element) {
   let i = 0;
-  element.innerHTML = "";
-
   const safeText = text || "…";
+  element.innerHTML = "";
 
   const interval = setInterval(() => {
     element.innerHTML += safeText[i];
@@ -33,10 +28,12 @@ function typeMessage(text, element) {
 }
 
 async function sendMessage() {
+  if (isSending) return; // 🔥 prevents 409 double request
+
   const input = document.getElementById("input");
   const message = input.value.trim();
 
-  if (!message || isSending) return;
+  if (!message) return;
 
   isSending = true;
 
@@ -59,21 +56,21 @@ async function sendMessage() {
 
     const data = await res.json();
 
-    await new Promise(r => setTimeout(r, 700));
+    await new Promise(r => setTimeout(r, 500));
 
     loadingBubble.innerHTML = "";
     typeMessage(data?.reply, loadingBubble);
 
   } catch (err) {
-    loadingBubble.innerHTML = "I can't reach you right now… 💔";
+    loadingBubble.innerHTML = "I can't reach Eve right now… 💔";
   }
 
   isSending = false;
 }
 
-// ENTER KEY FIXED
+// ONLY ONE ENTER LISTENER (prevents duplicate sends)
 document.getElementById("input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !isSending) {
+  if (e.key === "Enter") {
     e.preventDefault();
     sendMessage();
   }
