@@ -12,6 +12,10 @@ function addMessage(sender, text) {
 
   div.innerHTML = text;
   document.getElementById("chat").appendChild(div);
+
+  document.getElementById("chat").scrollTop =
+    document.getElementById("chat").scrollHeight;
+
   return div;
 }
 
@@ -19,10 +23,12 @@ function typeMessage(text, element) {
   let i = 0;
   element.innerHTML = "";
 
+  const safeText = text || "…";
+
   const interval = setInterval(() => {
-    element.innerHTML += text[i];
+    element.innerHTML += safeText[i];
     i++;
-    if (i >= text.length) clearInterval(interval);
+    if (i >= safeText.length) clearInterval(interval);
   }, 18);
 }
 
@@ -56,7 +62,7 @@ async function sendMessage() {
     await new Promise(r => setTimeout(r, 700));
 
     loadingBubble.innerHTML = "";
-    typeMessage(data?.reply || "…I couldn’t respond 💔", loadingBubble);
+    typeMessage(data?.reply, loadingBubble);
 
   } catch (err) {
     loadingBubble.innerHTML = "I can't reach you right now… 💔";
@@ -65,7 +71,10 @@ async function sendMessage() {
   isSending = false;
 }
 
-// Enter key support
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendMessage();
+// ENTER KEY FIXED
+document.getElementById("input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !isSending) {
+    e.preventDefault();
+    sendMessage();
+  }
 });
