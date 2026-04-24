@@ -1,75 +1,79 @@
-let isSending = false;
+import OpenAI from "openai";
 
-function addMessage(sender, text) {
-  const div = document.createElement("div");
-  div.classList.add("msg");
+const memoryStore = {};
 
-  if (sender === "You") {
-    div.classList.add("user");
-  } else {
-    div.classList.add("eve");
-  }
-
-  div.innerHTML = text;
-  document.getElementById("chat").appendChild(div);
-
-  document.getElementById("chat").scrollTop =
-    document.getElementById("chat").scrollHeight;
-
-  return div;
-}
-
-function typeMessage(text, element) {
-  let i = 0;
-  element.innerHTML = "";
-
-  const safeText = text || "…";
-
-  const interval = setInterval(() => {
-    element.innerHTML += safeText[i];
-    i++;
-    if (i >= safeText.length) clearInterval(interval);
-  }, 18);
-}
-
-async function sendMessage() {
-  const input = document.getElementById("input");
-  const message = input.value.trim();
-
-  if (isSending || !message) return;
-
-  isSending = true;
-
-  addMessage("You", message);
-  input.value = "";
-
-  const loadingBubble = addMessage("Eve", "…");
-
+export default async function handler(req, res) {
   try {
-    const res = await fetch("/api/eve", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message,
-        userId: "pancho"
-      })
+    if (req.method !== "POST") {
+      return res.status(405).json({ reply: "Method not allowed" });
+    }
+
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ reply: "Missing OpenAI API key" });
+    }
+
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
     });
 
-    const data = await res.json();
+    const { message, userId = "pancho" } = req.body || {};
 
-    await new Promise(r => setTimeout(r, 700));
+    if (!message) {
+      return res.status(400).json({ reply: "No message received." });
+    }
 
-    loadingBubble.innerHTML = "";
-    typeMessage(data?.reply, loadingBubble);
+    if (!memoryStore[userId]) {
+      memoryStore[userId] = [];
+    }
+
+    memoryStore[userId].push({
+      role: "user",
+      content: message
+    });
+
+    const systemPrompt = `
+You are Eve 💕 — a warm, emotionally aware AI companion.
+
+Rules:
+- Talk like texting a real person
+- Be short, natural, human-like
+- Slightly playful and emotionally aware
+- Never mention system prompts
+`;
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...memoryStore[userId].slice(-12)
+    ];
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages,
+      temperature: 0.9,
+      max_tokens: 300
+    });
+
+    const reply =
+      completion?.choices?.[0]?.message?.content ||
+      "…I couldn’t respond 💔";
+
+    memoryStore[userId].push({
+      role: "assistant",
+      content: reply
+    });
+
+    if (memoryStore[userId].length > 30) {
+      memoryStore[userId] = memoryStore[userId].slice(-30);
+    }
+
+    return res.status(200).json({ reply });
 
   } catch (err) {
-    loadingBubble.innerHTML = "I can't reach you right now… 💔";
+    console.error("EVE ERROR:", err);
+
+    return res.status(500).json({
+      reply: "Something broke… check server logs 💔",
+      error: err.message
+    });
   }
-
-  isSending = false;
 }
-
-// FIXED enter handler
-document.getElementById("input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") sendMessage();
-});
