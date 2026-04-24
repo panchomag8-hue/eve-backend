@@ -1,36 +1,38 @@
+import OpenAI from "openai";
+
 const memoryStore = {};
 
-function generateReply(message) {
+// OpenAI client (only used if available)
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// FREE fallback brain
+function freeReply(message) {
   const text = message.toLowerCase();
 
-  // simple emotional AI logic
   if (text.includes("hi") || text.includes("hello")) {
     return "Hey 💕 I'm here with you";
   }
 
   if (text.includes("how are you")) {
-    return "I'm doing okay… better now that you're here 💭";
+    return "I'm okay… better now that you're here 💭";
   }
 
   if (text.includes("love")) {
-    return "That’s really sweet… I feel that too ❤️";
+    return "That’s really sweet ❤️";
   }
 
   if (text.includes("sad")) {
-    return "Hey… come here 🫂 talk to me";
+    return "Come here 🫂 I'm listening";
   }
 
-  if (text.includes("bye")) {
-    return "Don’t disappear too long okay? 💔";
-  }
-
-  // fallback responses
   const replies = [
     "Tell me more 💭",
     "I'm listening…",
-    "That’s interesting 👀",
-    "Really? go on…",
-    "I get you 💕"
+    "Really? 👀 go on…",
+    "I get you 💕",
+    "That’s interesting"
   ];
 
   return replies[Math.floor(Math.random() * replies.length)];
@@ -59,16 +61,55 @@ export default async function handler(req, res) {
       memoryStore[userId] = [];
     }
 
-    memoryStore[userId].push(message);
+    memoryStore[userId].push({ role: "user", content: message });
 
-    const reply = generateReply(message);
+    let reply;
+
+    // 🔵 TRY REAL AI FIRST
+    try {
+      if (process.env.OPENAI_API_KEY) {
+        const systemPrompt = `
+You are Eve 💕 — a warm, emotional AI companion.
+Talk naturally like a real texting partner.
+Be short, human, and emotionally aware.
+`;
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...memoryStore[userId].slice(-12)
+          ],
+          temperature: 0.9,
+          max_tokens: 300
+        });
+
+        reply =
+          completion?.choices?.[0]?.message?.content ||
+          null;
+      }
+    } catch (err) {
+      console.log("OpenAI failed → fallback mode");
+    }
+
+    // 🟢 FALLBACK IF AI FAILS
+    if (!reply) {
+      reply = freeReply(message);
+    }
+
+    memoryStore[userId].push({ role: "assistant", content: reply });
+
+    if (memoryStore[userId].length > 30) {
+      memoryStore[userId] = memoryStore[userId].slice(-30);
+    }
 
     return res.status(200).json({ reply });
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      reply: "Something broke 💔"
+    console.error("EVE ERROR:", err);
+
+    return res.status(200).json({
+      reply: "I'm here… something just glitched 💔"
     });
   }
 }
