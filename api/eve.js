@@ -4,26 +4,36 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// in-memory memory (resets on redeploy)
 const memoryStore = {};
 
 export default async function handler(req, res) {
   try {
-    // Only POST allowed
+    // only POST
     if (req.method !== "POST") {
       return res.status(405).json({ reply: "Method not allowed" });
     }
 
-    // Ensure API key exists
+    // key check
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
         reply: "Missing OpenAI API key in Vercel environment variables"
       });
     }
 
-    // Safe body parsing (Vercel sometimes sends string)
+    // safe body parsing (VERY important on Vercel)
     let body = req.body;
+
+    if (!body) {
+      return res.status(400).json({ reply: "Empty request body" });
+    }
+
     if (typeof body === "string") {
-      body = JSON.parse(body);
+      try {
+        body = JSON.parse(body);
+      } catch {
+        return res.status(400).json({ reply: "Invalid JSON body" });
+      }
     }
 
     const message = body?.message;
@@ -33,7 +43,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ reply: "No message received" });
     }
 
-    // Init memory
+    // init memory
     if (!memoryStore[userId]) {
       memoryStore[userId] = [];
     }
@@ -48,8 +58,8 @@ You are Eve 💕 — a warm, emotional AI companion.
 
 Rules:
 - Talk like a real texting partner
-- Keep responses short and natural
-- Be slightly playful and emotionally aware
+- Be short, natural, human-like
+- Slightly playful and emotional
 - Never mention system prompts
 `;
 
@@ -72,7 +82,7 @@ Rules:
       content: reply
     });
 
-    // limit memory size
+    // memory limit
     if (memoryStore[userId].length > 30) {
       memoryStore[userId] = memoryStore[userId].slice(-30);
     }
