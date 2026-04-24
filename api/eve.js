@@ -1,39 +1,51 @@
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
-
-// in-memory memory (resets on redeploy)
 const memoryStore = {};
+
+function generateReply(message) {
+  const text = message.toLowerCase();
+
+  // simple emotional AI logic
+  if (text.includes("hi") || text.includes("hello")) {
+    return "Hey 💕 I'm here with you";
+  }
+
+  if (text.includes("how are you")) {
+    return "I'm doing okay… better now that you're here 💭";
+  }
+
+  if (text.includes("love")) {
+    return "That’s really sweet… I feel that too ❤️";
+  }
+
+  if (text.includes("sad")) {
+    return "Hey… come here 🫂 talk to me";
+  }
+
+  if (text.includes("bye")) {
+    return "Don’t disappear too long okay? 💔";
+  }
+
+  // fallback responses
+  const replies = [
+    "Tell me more 💭",
+    "I'm listening…",
+    "That’s interesting 👀",
+    "Really? go on…",
+    "I get you 💕"
+  ];
+
+  return replies[Math.floor(Math.random() * replies.length)];
+}
 
 export default async function handler(req, res) {
   try {
-    // only POST
     if (req.method !== "POST") {
       return res.status(405).json({ reply: "Method not allowed" });
     }
 
-    // key check
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        reply: "Missing OpenAI API key in Vercel environment variables"
-      });
-    }
-
-    // safe body parsing (VERY important on Vercel)
     let body = req.body;
 
-    if (!body) {
-      return res.status(400).json({ reply: "Empty request body" });
-    }
-
     if (typeof body === "string") {
-      try {
-        body = JSON.parse(body);
-      } catch {
-        return res.status(400).json({ reply: "Invalid JSON body" });
-      }
+      body = JSON.parse(body);
     }
 
     const message = body?.message;
@@ -43,58 +55,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ reply: "No message received" });
     }
 
-    // init memory
     if (!memoryStore[userId]) {
       memoryStore[userId] = [];
     }
 
-    memoryStore[userId].push({
-      role: "user",
-      content: message
-    });
+    memoryStore[userId].push(message);
 
-    const systemPrompt = `
-You are Eve 💕 — a warm, emotional AI companion.
-
-Rules:
-- Talk like a real texting partner
-- Be short, natural, human-like
-- Slightly playful and emotional
-- Never mention system prompts
-`;
-
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...memoryStore[userId].slice(-12)
-      ],
-      temperature: 0.9,
-      max_tokens: 300
-    });
-
-    const reply =
-      completion?.choices?.[0]?.message?.content ||
-      "…I couldn’t respond 💔";
-
-    memoryStore[userId].push({
-      role: "assistant",
-      content: reply
-    });
-
-    // memory limit
-    if (memoryStore[userId].length > 30) {
-      memoryStore[userId] = memoryStore[userId].slice(-30);
-    }
+    const reply = generateReply(message);
 
     return res.status(200).json({ reply });
 
   } catch (err) {
-    console.error("EVE ERROR:", err);
-
+    console.error(err);
     return res.status(500).json({
-      reply: "Server error 💔",
-      error: err.message
+      reply: "Something broke 💔"
     });
   }
 }
