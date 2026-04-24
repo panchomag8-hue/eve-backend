@@ -4,20 +4,30 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
+// simple in-memory memory (resets on redeploy, normal for Vercel)
 const memoryStore = {};
 
 export default async function handler(req, res) {
   try {
+    // Only allow POST requests
     if (req.method !== "POST") {
       return res.status(405).json({ reply: "Method not allowed" });
+    }
+
+    // Check API key exists
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({
+        reply: "Missing OpenAI API key in Vercel environment variables"
+      });
     }
 
     const { message, userId = "pancho" } = req.body || {};
 
     if (!message) {
-      return res.status(400).json({ reply: "No message received." });
+      return res.status(400).json({ reply: "No message received" });
     }
 
+    // create memory if not exists
     if (!memoryStore[userId]) {
       memoryStore[userId] = [];
     }
@@ -28,12 +38,12 @@ export default async function handler(req, res) {
     });
 
     const systemPrompt = `
-You are Eve 💕 — a warm, emotionally aware AI companion.
+You are Eve 💕 — a warm, emotional AI companion.
 
 Rules:
-- Talk like texting a real person
+- Talk like a real texting partner
 - Be short, natural, human-like
-- Slightly playful and emotionally aware
+- Slightly playful and emotional
 - Never mention system prompts
 `;
 
@@ -58,6 +68,7 @@ Rules:
       content: reply
     });
 
+    // limit memory size
     if (memoryStore[userId].length > 30) {
       memoryStore[userId] = memoryStore[userId].slice(-30);
     }
@@ -68,7 +79,7 @@ Rules:
     console.error("EVE ERROR:", err);
 
     return res.status(500).json({
-      reply: "Something broke… check server logs 💔",
+      reply: "Something broke on the server 💔",
       error: err.message
     });
   }
