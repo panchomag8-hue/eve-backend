@@ -1,73 +1,75 @@
-import OpenAI from "openai";
+let isSending = false;
 
-let memoryStore = {};
+function addMessage(sender, text) {
+  const div = document.createElement("div");
+  div.classList.add("msg");
 
-export default async function handler(req, res) {
+  if (sender === "You") {
+    div.classList.add("user");
+  } else {
+    div.classList.add("eve");
+  }
+
+  div.innerHTML = text;
+  document.getElementById("chat").appendChild(div);
+
+  document.getElementById("chat").scrollTop =
+    document.getElementById("chat").scrollHeight;
+
+  return div;
+}
+
+function typeMessage(text, element) {
+  let i = 0;
+  element.innerHTML = "";
+
+  const safeText = text || "…";
+
+  const interval = setInterval(() => {
+    element.innerHTML += safeText[i];
+    i++;
+    if (i >= safeText.length) clearInterval(interval);
+  }, 18);
+}
+
+async function sendMessage() {
+  const input = document.getElementById("input");
+  const message = input.value.trim();
+
+  if (isSending || !message) return;
+
+  isSending = true;
+
+  addMessage("You", message);
+  input.value = "";
+
+  const loadingBubble = addMessage("Eve", "…");
+
   try {
-    if (req.method !== "POST") {
-      return res.status(405).json({ reply: "Method not allowed" });
-    }
-
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
+    const res = await fetch("/api/eve", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        userId: "pancho"
+      })
     });
 
-    const { message, userId = "pancho" } = req.body;
+    const data = await res.json();
 
-    if (!message) {
-      return res.status(400).json({ reply: "No message received." });
-    }
+    await new Promise(r => setTimeout(r, 700));
 
-    if (!memoryStore[userId]) {
-      memoryStore[userId] = [];
-    }
-
-    memoryStore[userId].push({
-      role: "user",
-      content: message
-    });
-
-    const systemPrompt = `
-You are Eve 💕 — a warm, emotionally aware AI companion.
-
-- You talk like a real person texting
-- You are soft, slightly playful, emotionally aware
-- Keep responses short and natural
-- Never sound robotic
-`;
-
-    const messages = [
-      { role: "system", content: systemPrompt },
-      ...memoryStore[userId].slice(-12)
-    ];
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages,
-      temperature: 0.95,
-      max_tokens: 300
-    });
-
-    const reply =
-      response?.choices?.[0]?.message?.content ||
-      "…I couldn’t respond 💔";
-
-    memoryStore[userId].push({
-      role: "assistant",
-      content: reply
-    });
-
-    if (memoryStore[userId].length > 30) {
-      memoryStore[userId] = memoryStore[userId].slice(-30);
-    }
-
-    return res.status(200).json({ reply });
+    loadingBubble.innerHTML = "";
+    typeMessage(data?.reply, loadingBubble);
 
   } catch (err) {
-    console.error(err);
-
-    return res.status(500).json({
-      reply: "Something broke… but I’m still here 💔"
-    });
+    loadingBubble.innerHTML = "I can't reach you right now… 💔";
   }
+
+  isSending = false;
 }
+
+// FIXED enter handler
+document.getElementById("input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
